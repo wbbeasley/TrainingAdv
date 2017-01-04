@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration"/>
+    <spring:beans>
+        <spring:import resource="classpath:examples.xml"/>
+    </spring:beans>
+    <munit:test name="sayHello_payloadReturnsHello_True" description="In sayHello reutrns the payload as Hello">
+        <flow-ref name="sayHello" doc:name="sayHello"/>
+        <munit:assert-payload-equals message="Oops, payload is NOT Hello" expectedValue="#['Hello']" doc:name="Assert Payload is Hello"/>
+    </munit:test>
+    <munit:test name="sayHello_payloadTypeIsString_True" description="sayHello returns payload data type as java string">
+        <flow-ref name="sayHello" doc:name="sayHello"/>
+        <munit:assert-true message="Failed.  Expected payload as java.string but found #[payload.getClass().getName()] instead !!" condition="#[payload is java.lang.String]" doc:name="Assert True: Payload is data type java string"/>
+    </munit:test>
+    <munit:test name="sayHello_var_fName_is_Bryan" description="sayHello flow sets var fNameto Bryan">
+        <flow-ref name="sayHello" doc:name="sayHello"/>
+        <munit:assert-on-equals message="Oops!  fName is not Bryan.  Found #[flowVars.fName] instead!" expectedValue="#['Bryan']" actualValue="#[flowVars.fName]" doc:name="Assert Equals:fName = Bryan"/>
+    </munit:test>
+</mule>

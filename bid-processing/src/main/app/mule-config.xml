@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" 
+  xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+  xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" 
+  xmlns:spring="http://www.springframework.org/schema/beans" 
+  xmlns="http://www.mulesoft.org/schema/mule/core"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:file="http://www.mulesoft.org/schema/mule/file"
+  xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+  xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="${http.port}" doc:name="HTTP Listener Configuration"/>
+    <queued-asynchronous-processing-strategy name="HighThrougput_queued_FPS" maxThreads="80" minThreads="16" threadTTL="10000" doc:name="Queued Asynchronous Processing Strategy"/>
+
+  <flow name="AuctionService" >
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/auction" allowedMethods="POST" doc:name="HTTP"/>
+ <!--    <file:inbound-endpoint path="auction" doc:name="Read File auction" moveToDirectory="t" responseTimeout="10000"/>  -->
+    <object-to-string-transformer doc:name="Object to String"/>
+    <logger level="INFO" message="Consumed message: #[payload]" doc:name="Log Payload"/>
+    <logger level="INFO" message="At time: #[function:now]" doc:name="Log TimeStamp"/>
+        <request-reply doc:name="Request-Reply">
+            <vm:outbound-endpoint exchange-pattern="one-way" path="split" doc:name="VM"/>
+            <vm:inbound-endpoint exchange-pattern="one-way" path="auction.service" doc:name="VM"/>
+        </request-reply>
+        <set-payload value="#['{ &quot;winner&quot; : &quot;' + payload + '&quot; }']    " doc:name="Set Payload"/>
+    <!-- vm endpoint responsible for pushing result back to test -->
+  </flow>
+    <flow name="splitBidsFlow">
+        <vm:inbound-endpoint exchange-pattern="one-way" path="split" doc:name="VM"/>
+        <splitter expression="#[groovy:payload.readLines()]" doc:name="Splitter"/>
+        <vm:outbound-endpoint exchange-pattern="one-way" path="process" doc:name="VM: process"/>
+    </flow>
+    <flow name="processBidsFlow" processingStrategy="HighThrougput_queued_FPS">
+        <vm:inbound-endpoint exchange-pattern="one-way" path="process" doc:name="VM: process (listener)"/>
+        <component class="com.mulesoft.EnricherAuctionComponent" doc:name="EnrichBids Java Component"/>
+        <logger message="#['\nNode #' + mule.nodeId + ' processed: ' + payload]" level="INFO" doc:name="Log info on nodeid"/>
+        <collection-aggregator failOnTimeout="true" doc:name="Collection Aggregator"/>
+        <component class="com.mulesoft.HighestBidderAuctionComponent" doc:name="Highest Bidder Java Component"/>
+        <logger message="Highest Bidder: #[payload]" level="INFO" doc:name="Log Payload"/>
+        <logger message="At time: #[function:now]" level="INFO" doc:name="Log TimeStamp"/>
+        <vm:outbound-endpoint exchange-pattern="one-way" path="auction.service" doc:name="VM: auction.service"/>
+    </flow>
+
+</mule>

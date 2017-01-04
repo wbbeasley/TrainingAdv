@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <http:listener-config name="serverconnector_http_8082" protocol="HTTPS" host="0.0.0.0" port="8082" doc:name="HTTP Listener Configuration">
+        <tls:context>
+            <tls:key-store type="jks" path="server/serverKeyStore.jks" alias="selfsigned" keyPassword="pass1234" password="pass1234"/>
+        </tls:context>
+    </http:listener-config>
+    <http:listener-config name="Client_connector" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <http:request-config name="HTTPS_without_SSL" protocol="HTTPS" host="localhost" port="8082" doc:name="HTTP Request Configuration">
+        <tls:context>
+            <tls:trust-store path="server/serverTrustStore.jks" password="pass1234" type="jks"/>
+        </tls:context>
+    </http:request-config>
+    <flow name="mule-sslFlow">
+        <http:listener config-ref="serverconnector_http_8082" path="/server" allowedMethods="GET" doc:name="HTTPS"/>
+        <set-payload value="#['Server:Message received !!']" doc:name="Set Payload"/>
+    </flow>
+    <flow name="clientFlow">
+        <http:listener config-ref="Client_connector" path="/client" allowedMethods="GET" doc:name="HTTP"/>
+        <http:request config-ref="HTTPS_without_SSL" path="/server" method="GET" doc:name="Invoke Server via HTTPS"/>
+    </flow>
+</mule>

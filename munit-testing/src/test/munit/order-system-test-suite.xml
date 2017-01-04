@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration"/>
+    <spring:beans>
+        <spring:import resource="classpath:order-system.xml"/>
+    </spring:beans>
+    <munit:before-test name="order-system-test-suiteBefore_Test" description="Before tests actions">
+        <munit:set payload="#[[{'orderID':444, 'location':'worldwide','price':44.04}, {'orderID':555, 'location':'worldwide','price':55.05}, {'orderID':333, 'location':'national','price':33.03}]]" doc:name="Set Message: All Orders"/>
+    </munit:before-test>
+    <munit:test name="orderSystem_returnsTwoElementMap_True" description="orderSystem flow will return two elements of type java map">
+        <flow-ref name="processOrders" doc:name="processOrders"/>
+        <munit:assert-true message="Failed.  Expected payload type of java.Map, but found #[payload.getClass().getName()] instead." condition="#[payload is java.util.Map]" doc:name="Assert True: payload is HashMap"/>
+        <munit:assert-on-equals message="Failed.  Payload does not have 2 elemenets.  Payload has #[payload.size().toString()]" expectedValue="#[2]" actualValue="#[payload.size()]" doc:name="Assert Equals: Payload has two items"/>
+    </munit:test>
+    <munit:test name="processOrders_internationalKeyReturnsWorldwideOrders_True" description="Calling processOrders flow returns worldwide orders when key is international">
+        <flow-ref name="processOrders" doc:name="processOrders"/>
+        <munit:assert-true message="international does not have any rows!!" condition="#[payload.'international'.size() &gt; 0]" doc:name="Assert True: international key has rows"/>
+        <foreach collection="#[payload.'international']" doc:name="For Each in international key">
+            <munit:assert-on-equals message="Failed! Not all location values are worldwide. Instead was #[payload.location]." expectedValue="#['worldwide']" actualValue="#[payload.location]" doc:name="Assert Equals;location equals worldwide"/>
+        </foreach>
+    </munit:test>
+    <munit:test name="processOrders_domesticKeyReturnsNationalOrders_True" description="Calling processOrders flow returns worldwide orders when key is international">
+        <flow-ref name="processOrders" doc:name="processOrders"/>
+        <munit:assert-true message="domestic does not have any rows!!" condition="#[payload.'domestic'.size() &gt; 0]" doc:name="Assert True: domestic key has rows"/>
+        <foreach collection="#[payload.'domestic']" doc:name="For Each in domestic key">
+            <munit:assert-on-equals message="Failed! Not all location values are national. Instead was #[payload.location]." expectedValue="#['national']" actualValue="#[payload.location]" doc:name="Assert Equals;location equals worldwide"/>
+        </foreach>
+    </munit:test>
+</mule>
